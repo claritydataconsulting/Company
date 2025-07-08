@@ -208,9 +208,6 @@ def create_staff_html(note_name, clef, visual_position):
     # Middle line is at position 2 (y=100)
     stem_up = visual_position <= 2
     
-    # Debug info
-    debug_info = f"Note: {note_name}, Clef: {clef}, Visual Position: {visual_position}, Stem: {'UP' if stem_up else 'DOWN'}"
-    
     if stem_up:
         # Stem goes up on the right side
         stem_x1 = 172  # Right side of note
@@ -225,9 +222,8 @@ def create_staff_html(note_name, clef, visual_position):
         stem_y2 = note_y + 35
     
     html_content = f"""
-    <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
-        <h3 style="color: #333; margin-bottom: 20px;">{clef} Clef</h3>
-        <p style="color: #666; font-size: 12px;">{debug_info}</p>
+    <div style="background: white; padding: 20px; border-radius: 10px; text-align: center; margin: 10px 0;">
+        <h3 style="color: #333; margin-bottom: 15px;">{clef} Clef</h3>
         <div style="position: relative; display: inline-block;">
             <svg width="300" height="200" viewBox="0 0 300 200">
                 <!-- Staff lines (y=70, 85, 100, 115, 130) -->
@@ -308,7 +304,6 @@ def start_new_question():
 
 # Main app layout
 st.title("🎹 Music Note Learning App")
-st.markdown("Learn to read music notes in treble and bass clef!")
 
 # Menu state
 if st.session_state.game_state == 'menu':
@@ -354,46 +349,50 @@ elif st.session_state.game_state == 'playing':
         st.session_state.game_state = 'finished'
         st.rerun()
     
-    # Display current progress
+    # Compact header with key info only
     if st.session_state.record_mode:
-        st.markdown(f"## 🏆 Record Breaker Mode")
-        st.markdown(f"**Current Streak:** {st.session_state.record_streak}")
-        st.markdown(f"**Best Streak:** {st.session_state.best_streak}")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🏆 Record Mode", f"Streak: {st.session_state.record_streak}")
+        with col2:
+            st.metric("🎯 Best Streak", st.session_state.best_streak)
+        with col3:
+            if st.button("Back to Menu", key="back_menu_1"):
+                st.session_state.game_state = 'menu'
+                st.rerun()
     else:
         level_config = LEVELS[st.session_state.current_level]
-        st.markdown(f"## Level {st.session_state.current_level}: {level_config['name']}")
-        st.markdown(f"**Question:** {st.session_state.question_number + 1}/{level_config['questions']}")
-        st.markdown(f"**Correct:** {st.session_state.correct_answers}")
+        col1, col2, col3, col4 = st.columns(4)
         
-        # Time display
-        if st.session_state.start_time:
-            elapsed = time.time() - st.session_state.start_time
-            remaining = level_config['total_time_limit'] - elapsed
-            st.markdown(f"**Time Remaining:** {max(0, int(remaining))} seconds")
-            
-            if level_config['individual_time_limit'] and st.session_state.question_start_time:
-                question_elapsed = time.time() - st.session_state.question_start_time
-                question_remaining = level_config['individual_time_limit'] - question_elapsed
-                st.markdown(f"**Question Time:** {max(0, int(question_remaining))} seconds")
+        with col1:
+            st.metric("📚 Level", f"{st.session_state.current_level}: {level_config['name']}")
+        with col2:
+            st.metric("📝 Progress", f"{st.session_state.question_number + 1}/{level_config['questions']}")
+        with col3:
+            st.metric("✅ Correct", st.session_state.correct_answers)
+        with col4:
+            # Time display
+            if st.session_state.start_time:
+                elapsed = time.time() - st.session_state.start_time
+                remaining = level_config['total_time_limit'] - elapsed
+                st.metric("⏱️ Time", f"{max(0, int(remaining))}s")
     
     # Generate question if needed
     if st.session_state.current_note is None:
         start_new_question()
-        st.write(f"**Generated:** Position key selected, Note: {st.session_state.current_note}, Visual pos: {st.session_state.visual_position}")
     
-    # Display the staff notation
-    st.markdown("---")
+    # Display the staff notation (this is now much higher up)
     staff_html = create_staff_html(st.session_state.current_note, st.session_state.current_clef, st.session_state.visual_position)
-    components.html(staff_html, height=300)
+    components.html(staff_html, height=280)
     
     # Show last answer result
     if st.session_state.last_answer is not None:
         if st.session_state.last_answer == 'correct':
-            st.success("Correct! 🎉")
+            st.success("✅ Correct!")
         else:
-            st.error(f"Incorrect. The answer was {st.session_state.previous_correct_answer}")
+            st.error(f"❌ Incorrect. The answer was **{st.session_state.previous_correct_answer}**")
     
-    # Answer options
+    # Answer options with compact layout
     st.markdown("### What note is this?")
     
     if st.session_state.record_mode:
@@ -401,16 +400,17 @@ elif st.session_state.game_state == 'playing':
     else:
         options = get_note_options(LEVELS[st.session_state.current_level])
     
-    # Create buttons for each option
-    cols = st.columns(len(options))
+    # Create compact button layout - use fewer columns to bring buttons closer together
+    num_cols = min(len(options), 7)  # Maximum 7 columns to keep buttons closer
+    cols = st.columns(num_cols)
+    
     for i, option in enumerate(options):
-        with cols[i]:
-            if st.button(option, key=f"answer_{option}_{st.session_state.question_number}"):
+        col_index = i % num_cols
+        with cols[col_index]:
+            if st.button(option, key=f"answer_{option}_{st.session_state.question_number}", 
+                        use_container_width=True):
                 # Check answer
                 correct_answer = get_simple_note_name(st.session_state.current_note)
-                
-                # Debug info - let's see what's happening
-                st.write(f"**Debug:** Full note: `{st.session_state.current_note}`, Converted to: `{correct_answer}`, You selected: `{option}`")
                 
                 if option == correct_answer:
                     st.session_state.correct_answers += 1
@@ -442,11 +442,12 @@ elif st.session_state.game_state == 'playing':
                         st.session_state.current_note = None
                         st.rerun()
     
-    # Back to menu button
-    st.markdown("---")
-    if st.button("Back to Menu"):
-        st.session_state.game_state = 'menu'
-        st.rerun()
+    # Back to menu button (only show if not already shown above)
+    if not st.session_state.record_mode:
+        st.markdown("---")
+        if st.button("Back to Menu", key="back_menu_2"):
+            st.session_state.game_state = 'menu'
+            st.rerun()
 
 # Finished state
 elif st.session_state.game_state == 'finished':
