@@ -403,49 +403,50 @@ elif st.session_state.game_state == 'playing':
         options = get_note_options(LEVELS[st.session_state.current_level])
     
     # Create compact button layout - 3 columns per row
-    options_per_row = 3
-    
-    for row_start in range(0, len(options), options_per_row):
-        cols = st.columns(options_per_row)
-        row_options = options[row_start:row_start + options_per_row]
+    # options_per_row = 3
+    cols = st.columns(3)
+
+    # for row_start in range(0, len(options), options_per_row):
+    #     cols = st.columns(options_per_row)
+    #     row_options = options[row_start:row_start + options_per_row]
         
-        for i, option in enumerate(row_options):
-            with cols[i]:
-                if st.button(option, key=f"answer_{option}_{st.session_state.question_number}", 
-                            use_container_width=True):
-                    # Check answer
-                    correct_answer = get_simple_note_name(st.session_state.current_note)
-                    
-                    if option == correct_answer:
-                        st.session_state.correct_answers += 1
-                        st.session_state.last_answer = 'correct'
-                        if st.session_state.record_mode:
-                            st.session_state.record_streak += 1
-                            if st.session_state.record_streak > st.session_state.best_streak:
-                                st.session_state.best_streak = st.session_state.record_streak
-                    else:
-                        st.session_state.last_answer = 'incorrect'
-                        # Store the correct answer for the current question before moving on
-                        st.session_state.previous_correct_answer = correct_answer
-                        if st.session_state.record_mode:
-                            st.session_state.record_streak = 0
-                    
-                    # Move to next question or finish
+    for i, option in enumerate(options):
+        with cols[i % 3]:
+            if st.button(option, key=f"answer_{option}_{st.session_state.question_number}", 
+                        use_container_width=True):
+                # Check answer
+                correct_answer = get_simple_note_name(st.session_state.current_note)
+                
+                if option == correct_answer:
+                    st.session_state.correct_answers += 1
+                    st.session_state.last_answer = 'correct'
                     if st.session_state.record_mode:
-                        # In record mode, continue indefinitely
-                        st.session_state.current_note = None
+                        st.session_state.record_streak += 1
+                        if st.session_state.record_streak > st.session_state.best_streak:
+                            st.session_state.best_streak = st.session_state.record_streak
+                else:
+                    st.session_state.last_answer = 'incorrect'
+                    # Store the correct answer for the current question before moving on
+                    st.session_state.previous_correct_answer = correct_answer
+                    if st.session_state.record_mode:
+                        st.session_state.record_streak = 0
+                
+                # Move to next question or finish
+                if st.session_state.record_mode:
+                    # In record mode, continue indefinitely
+                    st.session_state.current_note = None
+                    st.rerun()
+                else:
+                    st.session_state.question_number += 1
+                    level_config = LEVELS[st.session_state.current_level]
+                    
+                    if st.session_state.question_number >= level_config['questions']:
+                        st.session_state.game_state = 'finished'
                         st.rerun()
                     else:
-                        st.session_state.question_number += 1
-                        level_config = LEVELS[st.session_state.current_level]
-                        
-                        if st.session_state.question_number >= level_config['questions']:
-                            st.session_state.game_state = 'finished'
-                            st.rerun()
-                        else:
-                            st.session_state.current_note = None
-                            st.rerun()
-    
+                        st.session_state.current_note = None
+                        st.rerun()
+
     # Back to menu button (only show if not already shown above)
     if not st.session_state.record_mode:
         st.markdown("---")
